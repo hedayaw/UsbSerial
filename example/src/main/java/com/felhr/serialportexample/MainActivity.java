@@ -20,7 +20,55 @@ import android.widget.Toast;
 import java.lang.ref.WeakReference;
 import java.util.Set;
 
+import android.hardware.Sensor;
+import android.hardware.SensorEvent;
+import android.hardware.SensorEventListener;
+import android.hardware.SensorManager;
+import android.hardware.usb.UsbConstants;
+import android.hardware.usb.UsbDevice;
+import android.hardware.usb.UsbDeviceConnection;
+import android.hardware.usb.UsbEndpoint;
+import android.hardware.usb.UsbInterface;
+import android.hardware.usb.UsbManager;
+import android.hardware.usb.UsbRequest;
+import android.support.v7.app.AppCompatActivity;
+
+import java.lang.Math;
+import java.nio.ByteBuffer;
+
 public class MainActivity extends AppCompatActivity {
+
+//start here
+    private SensorManager sensorManagerA;
+    private SensorManager sensorManagerG;
+    private Sensor sensorA;
+    private Sensor sensorG;
+
+    private UsbManager usbManager;
+    private UsbDevice deviceFound;
+    private UsbDeviceConnection usbDeviceConnection;
+    private UsbInterface usbInterfaceFound = null;
+    private UsbEndpoint endpointOut = null;
+    private UsbEndpoint endpointIn = null;
+
+    private Button collectButton;
+    private Button stopButton;
+
+    private static final float NS2S = 1.0f / 1000000000.0f;
+    private final float[] deltaRotationVector = new float[4];
+    private float timestamp;
+
+    boolean startData;
+
+    private String x_valueA;
+    private String y_valueA;
+    private String z_valueA;
+    private String x_valueG;
+    private String y_valueG;
+    private String z_valueG;
+//end here
+
+
 
     /*
      * Notifications from UsbService will be received here.
@@ -47,11 +95,13 @@ public class MainActivity extends AppCompatActivity {
             }
         }
     };
+
     private UsbService usbService;
     private TextView display;
     private EditText editText;
     private MyHandler mHandler;
     private final ServiceConnection usbConnection = new ServiceConnection() {
+
         @Override
         public void onServiceConnected(ComponentName arg0, IBinder arg1) {
             usbService = ((UsbService.UsbBinder) arg1).getService();
@@ -69,11 +119,40 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        mHandler = new MyHandler(this);
+        //start here
 
-        display = (TextView) findViewById(R.id.textView1);
+
+        sensorManagerA = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
+        sensorA = sensorManagerA.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
+        sensorManagerA.registerListener(this, sensorA, SensorManager.SENSOR_DELAY_NORMAL);
+
+        sensorManagerG = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
+        sensorG = sensorManagerG.getDefaultSensor(Sensor.TYPE_GYROSCOPE);
+        sensorManagerG.registerListener(this, sensorG, SensorManager.SENSOR_DELAY_NORMAL);
+
+        collectButton = findViewById(R.id.button2);
+        collectButton.setOnClickListener(new View.OnClickListener() {
+
+          @Override
+          public void onClick(View v) {
+            startData = true;
+          }
+        });
+        stopButton = findViewById(R.id.button3);
+        stopButton.setOnClickListener(new View.OnClickListener() {
+          @Override
+        	public void onClick(View v) {
+        		startData = false;
+        	}
+        });
+
+        usbManager = (UsbManager) getSystemService(Context.USB_SERVICE);
+        mHandler = new MyHandler(this);
+        //end here
+
+        display = (TextView) findViewById(R.id.textView4);
         editText = (EditText) findViewById(R.id.editText1);
-        Button sendButton = (Button) findViewById(R.id.buttonSend);
+        Button sendButton = (Button) findViewById(R.id.button);
         sendButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
